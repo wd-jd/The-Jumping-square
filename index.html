@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Square Jump Game</title>
+    <title>Square Jump & Run</title>
     <style>
         body {
             margin: 0;
@@ -11,7 +11,7 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #87CEEB; /* Sky blue background */
+            background-color: #87CEEB;
             overflow: hidden;
             font-family: sans-serif;
         }
@@ -20,7 +20,7 @@
             position: relative;
             width: 800px;
             height: 400px;
-            background-color: #7cfc00; /* Grassy field */
+            background-color: #7cfc00;
             border-bottom: 10px solid #556b2f;
             overflow: hidden;
         }
@@ -28,10 +28,10 @@
         #player {
             position: absolute;
             bottom: 0;
-            left: 50px;
+            left: 50px; /* Starting X position */
             width: 50px;
             height: 50px;
-            background-color: #ff4500; /* Character color */
+            background-color: #ff4500;
             border-radius: 4px;
         }
 
@@ -48,53 +48,84 @@
 <body>
 
     <div id="game-container">
-        <div class="instructions">Press the Up Arrow to Jump!</div>
+        <div class="instructions">Use Arrows to Move and Jump!</div>
         <div id="player"></div>
     </div>
 
     <script>
         const player = document.getElementById('player');
         
-        // Game Constants
+        // Physics Constants
         const gravity = 0.6;
         const jumpForce = -15;
+        const moveSpeed = 5;
         const groundLevel = 0;
 
-        // Game Variables
+        // Position and Velocity Variables
         let yVelocity = 0;
         let yPosition = 0;
+        let xPosition = 50;
         let isJumping = false;
 
+        // Track which keys are being pressed
+        const keys = {
+            ArrowUp: false,
+            ArrowRight: false,
+            ArrowLeft: false
+        };
+
         function update() {
-            // Apply gravity if the player is in the air
+            // --- Vertical Logic (Jumping) ---
             if (yPosition > groundLevel || yVelocity < 0) {
                 yVelocity += gravity;
                 yPosition -= yVelocity;
             }
 
-            // Check if player hit the ground
             if (yPosition <= groundLevel) {
                 yPosition = groundLevel;
                 yVelocity = 0;
                 isJumping = false;
             }
 
-            // Update the actual visual square
-            player.style.bottom = yPosition + "px";
+            // --- Horizontal Logic (Moving) ---
+            if (keys.ArrowRight) {
+                xPosition += moveSpeed;
+            }
+            if (keys.ArrowLeft) {
+                xPosition -= moveSpeed;
+            }
 
-            // Run the next frame
+            // Keep the square inside the game box
+            if (xPosition < 0) xPosition = 0;
+            if (xPosition > 750) xPosition = 750;
+
+            // Update Visuals
+            player.style.bottom = yPosition + "px";
+            player.style.left = xPosition + "px";
+
             requestAnimationFrame(update);
         }
 
-        // Listen for the Up Arrow key
+        // Listen for keys being pressed down
         window.addEventListener('keydown', (event) => {
-            if (event.code === 'ArrowUp' && !isJumping) {
-                yVelocity = jumpForce;
-                isJumping = true;
+            if (event.code in keys) {
+                keys[event.code] = true;
+                
+                // Trigger jump only once per press
+                if (event.code === 'ArrowUp' && !isJumping) {
+                    yVelocity = jumpForce;
+                    isJumping = true;
+                }
             }
         });
 
-        // Start the game loop
+        // Listen for keys being released
+        window.addEventListener('keyup', (event) => {
+            if (event.code in keys) {
+                keys[event.code] = false;
+            }
+        });
+
         update();
     </script>
 </body>
