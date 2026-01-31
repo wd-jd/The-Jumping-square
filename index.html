@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Square Jump Game</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #87CEEB; /* Sky blue background */
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 400px;
+            background-color: #7cfc00; /* Grassy field */
+            border-bottom: 10px solid #556b2f;
+            overflow: hidden;
+        }
+
+        #player {
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            width: 50px;
+            height: 50px;
+            background-color: #ff4500; /* Character color */
+            border-radius: 4px;
+        }
+
+        .instructions {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: #2e8b57;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div class="instructions">Press the Up Arrow to Jump!</div>
+        <div id="player"></div>
+    </div>
+
+    <script>
+        const player = document.getElementById('player');
+        
+        // Game Constants
+        const gravity = 0.6;
+        const jumpForce = -15;
+        const groundLevel = 0;
+
+        // Game Variables
+        let yVelocity = 0;
+        let yPosition = 0;
+        let isJumping = false;
+
+        function update() {
+            // Apply gravity if the player is in the air
+            if (yPosition > groundLevel || yVelocity < 0) {
+                yVelocity += gravity;
+                yPosition -= yVelocity;
+            }
+
+            // Check if player hit the ground
+            if (yPosition <= groundLevel) {
+                yPosition = groundLevel;
+                yVelocity = 0;
+                isJumping = false;
+            }
+
+            // Update the actual visual square
+            player.style.bottom = yPosition + "px";
+
+            // Run the next frame
+            requestAnimationFrame(update);
+        }
+
+        // Listen for the Up Arrow key
+        window.addEventListener('keydown', (event) => {
+            if (event.code === 'ArrowUp' && !isJumping) {
+                yVelocity = jumpForce;
+                isJumping = true;
+            }
+        });
+
+        // Start the game loop
+        update();
+    </script>
+</body>
+</html>
