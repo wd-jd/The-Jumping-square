@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Square Jump: Enemy Update</title>
+    <title>Square Jump: High Score Edition</title>
     <style>
         body {
             margin: 0;
@@ -14,7 +13,7 @@
             height: 100vh;
             background-color: #87CEEB;
             overflow: hidden;
-            font-family: sans-serif;
+            font-family: 'Arial Black', sans-serif;
         }
 
         #game-container {
@@ -24,6 +23,20 @@
             background-color: #7cfc00;
             border-bottom: 10px solid #556b2f;
             overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        /* Record Score Background Text */
+        #high-score-bg {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 120px;
+            color: rgba(0, 0, 0, 0.05); /* Very faint in the background */
+            user-select: none;
+            z-index: 0;
         }
 
         #player {
@@ -33,8 +46,40 @@
             width: 50px;
             height: 50px;
             background-color: #ff4500;
-            border-radius: 4px;
+            border-radius: 8px;
             z-index: 10;
+        }
+
+        /* Eyes and Mouth */
+        .eye {
+            position: absolute;
+            top: 10px;
+            width: 8px;
+            height: 8px;
+            background-color: white;
+            border-radius: 50%;
+        }
+        .eye.left { left: 10px; }
+        .eye.right { right: 10px; }
+        
+        .pupil {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background-color: black;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+        }
+
+        .mouth {
+            position: absolute;
+            bottom: 10px;
+            left: 15px;
+            width: 20px;
+            height: 6px;
+            background-color: #333;
+            border-radius: 0 0 10px 10px; /* Gives it a little smile */
         }
 
         #coin {
@@ -44,6 +89,7 @@
             background-color: #ffd700;
             border-radius: 50%;
             border: 3px solid #daa520;
+            z-index: 5;
         }
 
         #enemy {
@@ -51,27 +97,41 @@
             bottom: 0;
             width: 40px;
             height: 40px;
-            background-color: #b22222; /* Crimson Red */
+            background-color: #b22222;
             border-radius: 4px;
+            z-index: 5;
         }
 
-        #score-display {
+        #ui-layer {
             position: absolute;
             top: 20px;
             left: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            color: #2e8b57;
+            z-index: 20;
+            pointer-events: none;
         }
+
+        #score-display { font-size: 24px; color: #2e8b57; }
+        #best-display { font-size: 16px; color: #556b2f; opacity: 0.8; }
     </style>
 </head>
 <body>
 
     <div id="game-container">
-        <div id="score-display">Score: 0</div>
+        <div id="high-score-bg">BEST: 0</div>
+        
+        <div id="ui-layer">
+            <div id="score-display">Score: 0</div>
+            <div id="best-display">Record: 0</div>
+        </div>
+
         <div id="coin"></div>
         <div id="enemy"></div>
-        <div id="player"></div>
+
+        <div id="player">
+            <div class="eye left"><div class="pupil"></div></div>
+            <div class="eye right"><div class="pupil"></div></div>
+            <div class="mouth"></div>
+        </div>
     </div>
 
     <script>
@@ -79,65 +139,72 @@
         const coin = document.getElementById('coin');
         const enemy = document.getElementById('enemy');
         const scoreDisplay = document.getElementById('score-display');
+        const bestDisplay = document.getElementById('best-display');
+        const bgRecord = document.getElementById('high-score-bg');
         
-        // Settings
         const gravity = 0.6;
         const jumpForce = -15;
         const moveSpeed = 6;
         const groundLevel = 0;
 
-        // State Variables
         let yVelocity = 0;
         let yPosition = 0;
         let xPosition = 50;
         let score = 0;
+        let highScore = localStorage.getItem('squareJumpHigh') || 0; // Load from memory
         let isJumping = false;
 
-        // Enemy Variables
         let enemyX = 600;
         let enemySpeed = 3;
 
         const keys = { ArrowUp: false, ArrowRight: false, ArrowLeft: false };
 
+        // Initialize display
+        bestDisplay.innerText = "Record: " + highScore;
+        bgRecord.innerText = "BEST: " + highScore;
+
         function moveCoin() {
             const maxX = 770;
-            // FIXED: Reduced maxY to 130 so the total height (130+50) 
-            // is always reachable by the player's 187px jump height.
             const maxY = 130; 
             const randomX = Math.floor(Math.random() * maxX);
             const randomY = Math.floor(Math.random() * maxY) + 50;
-            
             coin.style.left = randomX + 'px';
             coin.style.bottom = randomY + 'px';
         }
 
-        function checkCollisions() {
-            const playerRect = player.getBoundingClientRect();
-            const coinRect = coin.getBoundingClientRect();
-            const enemyRect = enemy.getBoundingClientRect();
+        function handleHighScore() {
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('squareJumpHigh', highScore); // Save to memory
+                bestDisplay.innerText = "Record: " + highScore;
+                bgRecord.innerText = "BEST: " + highScore;
+            }
+        }
 
-            // Check Coin Collision
-            if (!(playerRect.top > coinRect.bottom || playerRect.bottom < coinRect.top || 
-                  playerRect.right < coinRect.left || playerRect.left > coinRect.right)) {
+        function checkCollisions() {
+            const p = player.getBoundingClientRect();
+            const c = coin.getBoundingClientRect();
+            const e = enemy.getBoundingClientRect();
+
+            // Coin Collision
+            if (!(p.top > c.bottom || p.bottom < c.top || p.right < c.left || p.left > c.right)) {
                 score++;
                 scoreDisplay.innerText = "Score: " + score;
                 moveCoin();
-                // Make the enemy slightly faster every time you get a coin!
                 enemySpeed += 0.2;
+                handleHighScore();
             }
 
-            // Check Enemy Collision
-            if (!(playerRect.top > enemyRect.bottom || playerRect.bottom < enemyRect.top || 
-                  playerRect.right < enemyRect.left || playerRect.left > enemyRect.right)) {
-                score = 0; // Game Over / Reset Score
-                enemySpeed = 3; // Reset speed
+            // Enemy Collision
+            if (!(p.top > e.bottom || p.bottom < e.top || p.right < e.left || p.left > e.right)) {
+                score = 0;
+                enemySpeed = 3;
                 scoreDisplay.innerText = "Score: " + score;
-                xPosition = 50; // Send player back to start
+                xPosition = 50;
             }
         }
 
         function update() {
-            // Player Movement
             if (yPosition > groundLevel || yVelocity < 0) {
                 yVelocity += gravity;
                 yPosition -= yVelocity;
@@ -153,13 +220,9 @@
             if (xPosition < 0) xPosition = 0;
             if (xPosition > 750) xPosition = 750;
 
-            // Enemy Movement (Patrolling)
             enemyX -= enemySpeed;
-            if (enemyX < -40) {
-                enemyX = 800; // Reset enemy to the right side
-            }
+            if (enemyX < -40) enemyX = 800;
 
-            // Update Visuals
             player.style.bottom = yPosition + "px";
             player.style.left = xPosition + "px";
             enemy.style.left = enemyX + "px";
