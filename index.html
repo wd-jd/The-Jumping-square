@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Square Jump & Coin Collect</title>
+    <title>Square Jump: Enemy Update</title>
     <style>
         body {
             margin: 0;
@@ -13,7 +14,7 @@
             height: 100vh;
             background-color: #87CEEB;
             overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: sans-serif;
         }
 
         #game-container {
@@ -23,7 +24,6 @@
             background-color: #7cfc00;
             border-bottom: 10px solid #556b2f;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
 
         #player {
@@ -34,7 +34,7 @@
             height: 50px;
             background-color: #ff4500;
             border-radius: 4px;
-            z-index: 2;
+            z-index: 10;
         }
 
         #coin {
@@ -44,8 +44,15 @@
             background-color: #ffd700;
             border-radius: 50%;
             border: 3px solid #daa520;
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
-            z-index: 1;
+        }
+
+        #enemy {
+            position: absolute;
+            bottom: 0;
+            width: 40px;
+            height: 40px;
+            background-color: #b22222; /* Crimson Red */
+            border-radius: 4px;
         }
 
         #score-display {
@@ -55,7 +62,6 @@
             font-size: 24px;
             font-weight: bold;
             color: #2e8b57;
-            text-shadow: 1px 1px 2px white;
         }
     </style>
 </head>
@@ -64,12 +70,14 @@
     <div id="game-container">
         <div id="score-display">Score: 0</div>
         <div id="coin"></div>
+        <div id="enemy"></div>
         <div id="player"></div>
     </div>
 
     <script>
         const player = document.getElementById('player');
         const coin = document.getElementById('coin');
+        const enemy = document.getElementById('enemy');
         const scoreDisplay = document.getElementById('score-display');
         
         // Settings
@@ -85,12 +93,17 @@
         let score = 0;
         let isJumping = false;
 
+        // Enemy Variables
+        let enemyX = 600;
+        let enemySpeed = 3;
+
         const keys = { ArrowUp: false, ArrowRight: false, ArrowLeft: false };
 
-        // Position the coin randomly to start
         function moveCoin() {
-            const maxX = 770; // container width - coin width
-            const maxY = 250; // height above ground
+            const maxX = 770;
+            // FIXED: Reduced maxY to 130 so the total height (130+50) 
+            // is always reachable by the player's 187px jump height.
+            const maxY = 130; 
             const randomX = Math.floor(Math.random() * maxX);
             const randomY = Math.floor(Math.random() * maxY) + 50;
             
@@ -98,28 +111,33 @@
             coin.style.bottom = randomY + 'px';
         }
 
-        function checkCollision() {
-            // Get the rectangle boundaries of both elements
+        function checkCollisions() {
             const playerRect = player.getBoundingClientRect();
             const coinRect = coin.getBoundingClientRect();
+            const enemyRect = enemy.getBoundingClientRect();
 
-            // Logic: Do the rectangles overlap?
-            const isColliding = !(
-                playerRect.top > coinRect.bottom ||
-                playerRect.bottom < coinRect.top ||
-                playerRect.right < coinRect.left ||
-                playerRect.left > coinRect.right
-            );
-
-            if (isColliding) {
+            // Check Coin Collision
+            if (!(playerRect.top > coinRect.bottom || playerRect.bottom < coinRect.top || 
+                  playerRect.right < coinRect.left || playerRect.left > coinRect.right)) {
                 score++;
                 scoreDisplay.innerText = "Score: " + score;
-                moveCoin(); // Put the coin in a new spot
+                moveCoin();
+                // Make the enemy slightly faster every time you get a coin!
+                enemySpeed += 0.2;
+            }
+
+            // Check Enemy Collision
+            if (!(playerRect.top > enemyRect.bottom || playerRect.bottom < enemyRect.top || 
+                  playerRect.right < enemyRect.left || playerRect.left > enemyRect.right)) {
+                score = 0; // Game Over / Reset Score
+                enemySpeed = 3; // Reset speed
+                scoreDisplay.innerText = "Score: " + score;
+                xPosition = 50; // Send player back to start
             }
         }
 
         function update() {
-            // Movement logic
+            // Player Movement
             if (yPosition > groundLevel || yVelocity < 0) {
                 yVelocity += gravity;
                 yPosition -= yVelocity;
@@ -132,18 +150,21 @@
 
             if (keys.ArrowRight) xPosition += moveSpeed;
             if (keys.ArrowLeft) xPosition -= moveSpeed;
-
-            // Boundaries
             if (xPosition < 0) xPosition = 0;
             if (xPosition > 750) xPosition = 750;
 
-            // Apply styles
+            // Enemy Movement (Patrolling)
+            enemyX -= enemySpeed;
+            if (enemyX < -40) {
+                enemyX = 800; // Reset enemy to the right side
+            }
+
+            // Update Visuals
             player.style.bottom = yPosition + "px";
             player.style.left = xPosition + "px";
+            enemy.style.left = enemyX + "px";
 
-            // Run collision check
-            checkCollision();
-
+            checkCollisions();
             requestAnimationFrame(update);
         }
 
@@ -156,12 +177,10 @@
                 }
             }
         });
-
         window.addEventListener('keyup', (e) => {
             if (e.code in keys) keys[e.code] = false;
         });
 
-        // Initialize game
         moveCoin();
         update();
     </script>
